@@ -10,6 +10,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   body { font-family: 'Inter', system-ui, sans-serif; background: #f0f2f5; }
+  canvas { max-height: 240px !important; }
   .sidebar { background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); }
   .sidebar-item { transition: all 0.2s; }
   .sidebar-item:hover, .sidebar-item.active { background: rgba(255,255,255,0.1); }
@@ -117,11 +118,11 @@
           <div class="grid grid-cols-2 gap-4 mb-6">
             <div class="card p-5">
               <div class="font-semibold text-sm text-gray-700 mb-3">任务完成率趋势（近7天）</div>
-              <div style="max-height:250px;"><canvas id="completionChart"></canvas></div>
+              <div style="max-height:250px;overflow:hidden;position:relative;width:100%;"><canvas id="completionChart" style="max-height:240px !important;"></canvas></div>
             </div>
             <div class="card p-5">
               <div class="font-semibold text-sm text-gray-700 mb-3">意图分布（今日）</div>
-              <div style="max-height:250px;"><canvas id="intentChart"></canvas></div>
+              <div style="max-height:250px;overflow:hidden;position:relative;width:100%;"><canvas id="intentChart" style="max-height:240px !important;"></canvas></div>
             </div>
           </div>
 
