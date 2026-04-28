@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>成长守护AI助手 - 场景化方案Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#4CD964',
+            brandLight: '#E8F9EC',
+            brandDark: '#2BA84A',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes breathe {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(76,217,100,0.4); }
+      50% { box-shadow: 0 0 0 16px rgba(76,217,100,0); }
+    }
+    .breathe { animation: breathe 2s infinite; }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeInUp 0.4s ease-out; }
+    @keyframes typing {
+      0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; }
+    }
+    .typing-dot { animation: typing 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    .pulse-ring::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 3px solid #4CD964;
+      animation: pulse-ring 1.5s infinite;
+    }
+    @keyframes recording-wave {
+      0%, 100% { height: 8px; }
+      50% { height: 24px; }
+    }
+    .wave-bar { animation: recording-wave 0.8s infinite; }
+    .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+    .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+    .wave-bar:nth-child(4) { animation-delay: 0.15s; }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+    .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    .large-font .ai-text { font-size: 22px !important; line-height: 1.8 !important; }
+    .large-font .btn-large { min-height: 72px !important; font-size: 22px !important; border-radius: 16px !important; }
+    .speaker-icon { display: inline-block; animation: breathe 2s infinite; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4" x-data="app()">
+
+  <!-- Phone Frame -->
+  <div class="w-[390px] h-[844px] bg-white rounded-[40px] shadow-2xl overflow-hidden relative flex flex-col" :class="{'large-font': currentSkill === 'S02'}">
+    
+    <!-- Status Bar -->
+    <div class="h-12 bg-gradient-to-b from-[#E8F9EC] to-[#F0FAF2] flex items-center justify-between px-6 pt-2 flex-shrink-0">
+      <span class="text-sm font-medium text-gray-700">17:38</span>
+      <div class="flex gap-1 items-center">
+        <span class="text-xs text-gray-500">5G</span>
+        <div class="w-6 h-3 border border-gray-400 rounded-sm relative">
+          <div class="absolute inset-0.5 bg-green-500 rounded-sm" style="width:70%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="bg-gradient-to-b from-[#F0FAF2] to-[#F5FBF7] px-4 py-2 flex items-center justify-between flex-shrink-0">
+      <button @click="goHome()" class="w-8 h-8 rounded-lg bg-white/60 flex items-center justify-center text-gray-500 text-sm">←</button>
+      <span class="text-xs text-gray-400 bg-white/60 px-3 py-1 rounded-full" x-text="currentSkill ? skillNames[currentSkill] : '成长守护AI助手'"></span>
+      <div class="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center text-xs">•••</div>
+    </div>
+
+    <!-- S02 Voice Mode Banner -->
+    <div x-show="currentSkill === 'S02'" class="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2 flex-shrink-0 fade-in">
+      <span class="text-lg">🔊</span>
+      <span class="text-sm text-amber-700 font-medium">语音模式已开启 · AI会自动语音播报</span>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="flex-1 overflow-y-auto scroll-hide px-4 py-3 space-y-3" id="chatArea" :class="currentSkill === 'S02' ? 'bg-[#FFFDF5]' : 'bg-[#F5FBF7]'">
+      
+      <!-- Home Screen -->
+      <template x-if="screen === 'home'">
+        <div class="space-y-3 fade-in">
+          <div class="flex items-start gap-2">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-lg flex-shrink-0">🤖</div>
+            <div class="bg-white rounded-2xl rounded-tl-md px-4 py-3 max-w-[280px] shadow-sm">
+              <p class="text-[15px] text-gray-800 leading-relaxed">您好，ninini。需要我帮您查看孩子最近的游戏情况，或者设置游戏时间限制吗？</p>
+            </div>
+          </div>
+          <div class="ml-12 space-y-2">
+            <div class="bg-white rounded-2xl px-4 py-3 shadow-sm"><p class="text-[15px] text-gray-700">✨ 孩子最近都在玩哪些游戏？</p></div>
+            <div class="bg-white rounded-2xl px-4 py-3 shadow-sm"><p class="text-[15px] text-gray-700">🌿 帮我限制孩子的充值</p></div>
+            <div class="bg-white rounded-2xl px-4 py-3 shadow-sm"><p class="text-[15px] text-gray-700">🌱 查看孩子上周的玩游戏情况</p></div>
+          </div>
+          <!-- Skills Cards -->
+          <div class="mt-4">
+            <p class="text-xs text-gray-400 ml-1 mb-2">📋 场景化管控方案 · 一键获取适合您的管控建议</p>
+            <div class="flex gap-3 overflow-x-auto scroll-hide pb-2 -mx-1 px-1">
+              <div @click="enterSkill('S01')" class="flex-shrink-0 w-[88px] bg-white rounded-2xl p-3 shadow-sm cursor-pointer hover:shadow-md transition text-center border border-gray-50">
+                <div class="text-3xl mb-1">🔥</div>
+                <p class="text-[13px] font-bold text-gray-800">情绪失控</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">冷静管控</p>
+              </div>
+              <div @click="enterSkill('S02')" class="flex-shrink-0 w-[88px] bg-white rounded-2xl p-3 shadow-sm cursor-pointer hover:shadow-md transition text-center border border-amber-100 bg-amber-50/30">
+                <div class="text-3xl mb-1">👴</div>
+                <p class="text-[13px] font-bold text-gray-800">不识字</p>
+                <p class="text-[11px] text-amber-500 mt-0.5">语音管控</p>
+              </div>
+              <div @click="enterSkill('S03')" class="flex-shrink-0 w-[88px] bg-white rounded-2xl p-3 shadow-sm cursor-pointer hover:shadow-md transition text-center border border-gray-50">
+                <div class="text-3xl mb-1">🆕</div>
+                <p class="text-[13px] font-bold text-gray-800">新手家长</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">第一次管</p>
+              </div>
+              <div @click="enterSkill('S04')" class="flex-shrink-0 w-[88px] bg-white rounded-2xl p-3 shadow-sm cursor-pointer hover:shadow-md transition text-center border border-gray-50">
+                <div class="text-3xl mb-1">📅</div>
+                <p class="text-[13px] font-bold text-gray-800">假期模式</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">一键切换</p>
+              </div>
+              <div class="flex-shrink-0 w-[88px] bg-white rounded-2xl p-3 shadow-sm text-center border border-gray-50">
+                <div class="text-3xl mb-1">😰</div>
+                <p class="text-[13px] font-bold text-gray-800">充值应急</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">发现乱花</p>
+              </div>
+              <div @click="enterSkill('S06')" class="flex-shrink-0 w-[88px] bg-white rounded-2xl p-3 shadow-sm cursor-pointer hover:shadow-md transition text-center border border-gray-50">
+                <div class="text-3xl mb-1">👨‍👩‍👦</div>
+                <p class="text-[13px] font-bold text-gray-800">隔代带娃</p>
+                <p class="text-[11px] text-gray-400 mt-0.5">温和守护</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Chat Messages -->
+      <template x-if="screen === 'chat'">
+        <div class="space-y-3">
+          <template x-for="(msg, index) in messages" :key="index">
+            <div class="fade-in">
+              <template x-if="msg.role === 'ai'">
+                <div class="flex items-start gap-2">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-lg flex-shrink-0">🤖</div>
+                  <div class="bg-white rounded-2xl rounded-tl-md px-4 py-3 max-w-[280px] shadow-sm">
+                    <p class="ai-text text-[15px] text-gray-800 leading-relaxed whitespace-pre-line" x-html="msg.content"></p>
+                    <div x-show="currentSkill === 'S02'" class="mt-2 flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 rounded-full px-2 py-1 w-fit">
+                      <span class="speaker-icon">🔊</span><span>语音播报中</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template x-if="msg.role === 'user'">
+                <div class="flex justify-end">
+                  <div class="bg-brand text-white rounded-2xl rounded-tr-md px-4 py-3 max-w-[260px] shadow-sm">
+                    <p class="text-[15px] leading-relaxed" x-html="msg.content"></p>
+                  </div>
+                </div>
+              </template>
+              <template x-if="msg.role === 'buttons'">
+                <div class="ml-12 space-y-2">
+                  <template x-for="(btn, bi) in msg.buttons" :key="bi">
+                    <button @click="handleButton(btn)" class="w-full text-left rounded-2xl px-4 py-3 shadow-sm transition font-medium btn-large" :class="btn.type === 'primary' ? 'bg-brand text-white breathe hover:bg-brandDark' : btn.type === 'danger' ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-100'" x-text="btn.label"></button>
+                  </template>
+                </div>
+              </template>
+              <template x-if="msg.role === 'plan'">
+                <div class="ml-12 bg-white rounded-2xl px-4 py-4 shadow-sm border border-green-100 space-y-2">
+                  <template x-for="(item, pi) in msg.items" :key="pi">
+                    <div class="flex items-center gap-2 py-1">
+                      <span class="text-xl" x-text="item.icon"></span>
+                      <span class="ai-text text-[15px] text-gray-700" x-text="item.text"></span>
+                    </div>
+                  </template>
+                </div>
+              </template>
+              <template x-if="msg.role === 'success'">
+                <div class="ml-12 bg-green-50 rounded-2xl px-4 py-4 shadow-sm border border-green-200 text-center">
+                  <div class="text-4xl mb-2">✅</div>
+                  <p class="text-[16px] font-bold text-green-700" x-text="msg.content"></p>
+                </div>
+              </template>
+              <template x-if="msg.role === 'typing'">
+                <div class="flex items-start gap-2">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-lg flex-shrink-0">🤖</div>
+                  <div class="bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm flex gap-1.5">
+                    <div class="w-2 h-2 bg-gray-300 rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-gray-300 rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-gray-300 rounded-full typing-dot"></div>
+                  </div>
+                </div>
+              </template>
+              <!-- S02 Report Button (special) -->
+              <template x-if="msg.role === 'reportBtn'">
+                <div class="ml-12 space-y-2">
+                  <button @click="handleButton({action:'s02_report'})" class="w-full rounded-2xl px-6 py-5 shadow-md transition font-bold btn-large bg-brand text-white breathe hover:bg-brandDark text-center" style="min-height:80px;">
+                    <div class="text-2xl mb-1">📱</div>
+                    <div class="text-xl">上报我这台手机</div>
+                    <div class="text-sm opacity-80 mt-1">点这里，管住孩子在这台手机上玩游戏</div>
+                  </button>
+                </div>
+              </template>
+              <!-- Notify Card (生成图片) -->
+              <template x-if="msg.role === 'notifyCard'">
+                <div class="ml-12 my-2">
+                  <div class="bg-white rounded-2xl shadow-lg border-2 border-green-200 overflow-hidden" style="max-width:320px;">
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white text-center py-3 px-4 font-bold text-lg" x-text="msg.content.title"></div>
+                    <div class="px-5 py-4 text-sm leading-relaxed text-gray-700 space-y-0.5">
+                      <template x-for="(line, li) in msg.content.lines" :key="li">
+                        <p x-text="line" :class="line === '' ? 'h-2' : ''"></p>
+                      </template>
+                    </div>
+                    <div class="border-t border-gray-100 px-4 py-2 flex items-center justify-center gap-1 text-xs text-gray-400">
+                      <span>🛡️</span><span>成长守护平台</span>
+                    </div>
+                  </div>
+                  <div class="text-xs text-gray-400 mt-1 ml-1">💡 长按图片可保存到手机</div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- Bottom Input -->
+    <div class="bg-white border-t border-gray-100 px-4 py-2 flex-shrink-0">
+      <div class="flex gap-2 mb-2 overflow-x-auto scroll-hide" x-show="screen === 'home'">
+        <span class="flex-shrink-0 bg-gray-50 text-gray-600 text-xs px-3 py-1.5 rounded-full border border-gray-100">🔧 管控工具</span>
+        <span class="flex-shrink-0 bg-brand/10 text-green-700 text-xs px-3 py-1.5 rounded-full border border-green-100">👤 ninini</span>
+        <span class="flex-shrink-0 bg-gray-50 text-gray-600 text-xs px-3 py-1.5 rounded-full border border-gray-100">👥 成员情况</span>
+      </div>
+      <div class="flex items-center gap-2 justify-center">
+        <!-- S02: Big Mic Button -->
+        <template x-if="currentSkill === 'S02'">
+          <div class="flex flex-col items-center gap-1 py-1">
+            <button @click="toggleVoiceInput()" class="mic-btn w-20 h-20 rounded-full flex items-center justify-center text-white text-4xl shadow-lg active:scale-95 transition relative" :class="isRecording ? 'bg-red-500' : 'bg-gradient-to-br from-green-400 to-green-600 breathe'">
+              <template x-if="!isRecording">
+                <span>🎤</span>
+              </template>
+              <template x-if="isRecording">
+                <div class="flex items-center gap-1">
+                  <div class="w-1 bg-white rounded-full wave-bar" style="height:8px"></div>
+                  <div class="w-1 bg-white rounded-full wave-bar" style="height:16px"></div>
+                  <div class="w-1 bg-white rounded-full wave-bar" style="height:24px"></div>
+                  <div class="w-1 bg-white rounded-full wave-bar" style="height:16px"></div>
+                  <div class="w-1 bg-white rounded-full wave-bar" style="height:8px"></div>
+                </div>
+              </template>
+              <div x-show="isRecording" class="absolute inset-0 rounded-full" style="border:3px solid #ef4444; animation: pulse-ring 1.5s infinite;"></div>
+            </button>
+            <span class="text-xs" :class="isRecording ? 'text-red-500 font-bold' : 'text-gray-400'" x-text="isRecording ? '正在听您说话...' : '按一下，开始说话'"></span>
+          </div>
+        </template>
+        <!-- Normal Input -->
+        <template x-if="currentSkill !== 'S02'">
+          <div class="flex items-center gap-2 w-full">
+            <div class="flex-1 flex items-center bg-gray-50 rounded-full px-4 py-2.5 border border-gray-100">
+              <span class="text-xl mr-2">🎙️</span>
+              <span class="text-sm text-gray-400">发消息或按住说话</span>
+            </div>
+            <button class="w-9 h-9 rounded-full bg-brand flex items-center justify-center text-white flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bg-white border-t border-gray-100 flex items-center justify-around py-2 pb-4 flex-shrink-0">
+      <div class="flex flex-col items-center gap-0.5"><span class="text-xl">💬</span><span class="text-[10px] text-gray-400">家庭沟通</span></div>
+      <div class="flex flex-col items-center gap-0.5"><span class="text-xl">💭</span><span class="text-[10px] text-gray-400">成长社区</span></div>
+      <div class="flex flex-col items-center gap-0.5 relative">
+        <div class="w-10 h-10 -mt-3 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center shadow-md"><span class="text-lg text-white">🎮</span></div>
+        <span class="text-[10px] text-green-600 font-medium">游戏管理</span>
+      </div>
+      <div class="flex flex-col items-center gap-0.5"><span class="text-xl">👤</span><span class="text-[10px] text-gray-400">我的</span></div>
+    </div>
+  </div>
+
+  <!-- Side Panel -->
+  <div class="ml-6 w-[200px] space-y-3 flex-shrink-0">
+    <h3 class="text-sm font-bold text-gray-600 mb-2">🎬 演示场景选择</h3>
+    <button @click="goHome()" class="w-full text-left px-3 py-2 rounded-xl text-sm transition" :class="!currentSkill ? 'bg-green-100 text-green-800 font-bold' : 'bg-white text-gray-600 hover:bg-gray-50'">🏠 首页（含Skills卡片）</button>
+    <div class="text-[10px] text-red-500 font-bold ml-1 mt-2">⭐ 重点演示场景</div>
+    <button @click="enterSkill('S01')" class="w-full text-left px-3 py-2 rounded-xl text-sm transition" :class="currentSkill==='S01' ? 'bg-red-100 text-red-800 font-bold' : 'bg-white text-gray-600 hover:bg-gray-50'">🔥 暴躁的妈妈</button>
+    <button @click="enterSkill('S02')" class="w-full text-left px-3 py-2 rounded-xl text-sm transition border-2" :class="currentSkill==='S02' ? 'bg-amber-100 text-amber-800 font-bold border-amber-300' : 'bg-white text-gray-600 hover:bg-gray-50 border-amber-200'">👴 不识字的爷爷 <span class="text-[10px]">🔊🎤</span></button>
+    <button @click="enterSkill('S06')" class="w-full text-left px-3 py-2 rounded-xl text-sm transition" :class="currentSkill==='S06' ? 'bg-blue-100 text-blue-800 font-bold' : 'bg-white text-gray-600 hover:bg-gray-50'">👨‍👩‍👦 隔代留守</button>
+    <hr class="border-gray-200">
+    <button @click="enterSkill('S03')" class="w-full text-left px-3 py-2 rounded-xl text-sm bg-white text-gray-600 hover:bg-gray-50">🆕 新手家长</button>
+    <button @click="enterSkill('S04')" class="w-full text-left px-3 py-2 rounded-xl text-sm bg-white text-gray-600 hover:bg-gray-50">📅 假期模式</button>
+    <div class="text-[10px] text-gray-400 mt-4 leading-relaxed">
+      💡 点击场景切换演示<br>
+      🔊 S02支持真实语音播报<br>
+      🎤 S02支持真实语音输入<br>
+      📱 所有按钮可交互
+    </div>
+  </div>
+
+  <script>
+    // TTS
+    function speak(text, callback) {
+      window.speechSynthesis.cancel();
+      const clean = text.replace(/<[^>]*>/g, '').replace(/[📌⏰💰🎮🌙👉✅🔊👋😤😊👍❤️💪👏😄😮‍💨😔😐😟😱]/g, '');
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = 'zh-CN';
+      u.rate = 0.85;
+      u.pitch = 1.0;
+      u.onend = () => { if (callback) callback(); };
+      window.speechSynthesis.speak(u);
+    }
+
+    // ASR
+    let recognition = null;
+    function initASR() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return null;
+      recognition = new SR();
+      recognition.lang = 'zh-CN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      return recognition;
+    }
+
+    function app() {
+      return {
+        screen: 'home',
+        currentSkill: null,
+        messages: [],
+        isRecording: false,
+        skillNames: {
+          'S01': '🔥 情绪失控·冷静管控',
+          'S02': '👴 不识字长辈·语音管控',
+          'S03': '🆕 新手家长·第一次管控',
+          'S04': '📅 假期/开学模式切换',
+          'S06': '👨‍👩‍👦 隔代带娃·温和守护'
+        },
+
+        goHome() {
+          window.speechSynthesis.cancel();
+          this.screen = 'home';
+          this.currentSkill = null;
+          this.messages = [];
+          this.isRecording = false;
+        },
+
+        async enterSkill(id) {
+          window.speechSynthesis.cancel();
+          this.currentSkill = id;
+          this.screen = 'chat';
+          this.messages = [];
+          this.isRecording = false;
+          await this.delay(300);
+          if (id === 'S01') this.flowS01();
+          else if (id === 'S02') this.flowS02();
+          else if (id === 'S03') this.flowS03();
+          else if (id === 'S04') this.flowS04();
+          else if (id === 'S06') this.flowS06();
+        },
+
+        // ========== S01 ==========
+        async flowS01() {
+          await this.showTyping();
+          this.addAI('我理解您现在很生气 😤\n\n先深呼一口气，我们一起想办法。\n\n直接禁掉所有游戏看起来解气，但经验告诉我们——完全禁止往往让孩子更逆反。\n\n我给您推荐一个<b>「先严后松」</b>的方案——先控制住，观察效果再调整。');
+          await this.delay(500);
+          this.addBtns([
+            { label: '👍 好的，听你的建议', type: 'primary', action: 's01_accept' },
+            { label: '😡 不行，直接全部禁掉！', type: 'danger', action: 's01_ban' }
+          ]);
+        },
+        async s01_accept() {
+          await this.showTyping();
+          this.addAI('好的，我来帮您设置管控方案：');
+          this.addPlan([
+            { icon: '🎮', text: '游戏时间：仅周五六日及法定假日 20:00-21:00，每天≤1小时' },
+            { icon: '🚫', text: '周一到周四：完全不能登录游戏' },
+            { icon: '💰', text: '充值：按国家标准限制（12岁以下禁充）' }
+          ]);
+          await this.delay(400);
+          this.addAI('这已经是国家允许的<b>最低限度</b>，能限的都限了。\n建议同时<b>开启人脸识别</b>防冒用。');
+          this.addBtns([
+            { label: '✅ 就这样设置', type: 'primary', action: 's01_done' },
+            { label: '✏️ 我想调整一下', type: '', action: 's01_adjust' }
+          ]);
+        },
+        async s01_ban() {
+          await this.showTyping();
+          this.addAI('我理解。不过提醒您：\n\n很多家长反馈完全禁玩后孩子反而更激烈——偷拿手机、去同学家玩。\n\n<b>建议先按国家最严标准限制（周五六日20-21点，1小时），观察3天。</b>不行再禁也不迟。');
+          this.addBtns([
+            { label: '🤔 好吧，先试试限时', type: 'primary', action: 's01_accept' },
+            { label: '🚫 我主意已定，禁掉', type: 'danger', action: 's01_forceBan' }
+          ]);
+        },
+        async s01_forceBan() {
+          this.addUser('直接禁掉所有游戏');
+          await this.showTyping();
+          this.addSuccess('已禁掉全部游戏');
+          await this.delay(500);
+          this.addAI('建议您<b>3天后来复查</b>——如果孩子表现改善，可以从"完全禁止"改为"限时"。我到时提醒您。');
+        },
+        async s01_done() {
+          this.addUser('就这样设置');
+          await this.showTyping();
+          this.addSuccess('设置完成！5分钟内生效');
+          await this.delay(500);
+          this.addAI('建议您：\n\n1️⃣ <b>今晚先别跟孩子提</b>——等双方冷静再谈\n2️⃣ <b>3天后看游戏报告</b>——表现好可适当放宽\n3️⃣ 需要调整随时找我\n\n<b>管控不是惩罚，是保护</b> 💪');
+        },
+        async s01_adjust() {
+          this.addUser('我想调整一下');
+          await this.showTyping();
+          this.addAI('好的，在国家标准基础上额外开启人脸识别：');
+          this.addPlan([
+            { icon: '🎮', text: '游戏时间：仅周五六日 20:00-21:00，≤1小时' },
+            { icon: '🚫', text: '周一到周四：完全禁止' },
+            { icon: '💰', text: '充值：按年龄国标限制' },
+            { icon: '👤', text: '人脸识别：开启（防冒用）' }
+          ]);
+          this.addBtns([{ label: '✅ 确认设置', type: 'primary', action: 's01_done' }]);
+        },
+
+        // ========== S02 (with TTS + ASR + phone report) ==========
+        async flowS02() {
+          await this.showTyping();
+          const text = '您好！\n\n我是小助手，帮您管孩子玩游戏。\n\n如果孩子经常拿您的手机玩游戏，\n请点一下下面那个<b>绿色的长按钮</b>就可以了 👇';
+          this.addAI(text);
+          speak(text);
+          await this.delay(800);
+          this.messages.push({ role: 'reportBtn' });
+          this.addBtns([
+            { label: '🤔 孩子用的是自己的手机', type: '', action: 's02_childPhone' }
+          ]);
+          this.scrollDown();
+        },
+
+        async s02_report() {
+          this.addUser('📱 上报我这台手机');
+          await this.showTyping();
+          const t1 = '好的！正在上报您这台手机...\n\n上报成功了！\n\n从现在开始，在您这台手机上玩游戏，就自动有了规矩：\n\n只有周五六日晚上8点到9点能玩\n每天最多一个小时\n周一到周四完全不能玩\n\n这些是国家规定，系统自动帮您管！';
+          this.addAI(t1);
+          speak(t1);
+          await this.delay(1500);
+          const t3 = '您什么都不用做，系统帮您管。以后想了解情况，再来找我说一声就行。您放心！';
+          this.addAI(t3);
+          speak(t3);
+          this.addBtns([
+            { label: '🟢 好的，没事了', type: 'primary', action: 's02_end' },
+            { label: '🔄 我还想问问别的', type: '', action: 's02_end' }
+          ]);
+        },
+
+        async s02_end() {
+          const t = '好的，有需要随时来找我。您辛苦了！';
+          this.addAI(t);
+          speak(t);
+        },
+
+        async s02_childPhone() {
+          this.addUser('孩子用的是自己的手机');
+          await this.showTyping();
+          const t = '那就需要上报孩子那台手机了。\n\n但是不用着急——您可以让孩子的<b>爸爸妈妈远程帮忙</b>绑定。\n\n要不要我发消息提醒他们？';
+          this.addAI(t);
+          speak(t);
+          await this.delay(600);
+          this.addBtns([
+            { label: '✅ 好，帮我通知爸妈', type: 'primary', action: 's02_notifyParent' },
+            { label: '🔄 还是先管我这台手机吧', type: '', action: 's02_report' }
+          ]);
+        },
+
+        async s02_notifyParent() {
+          this.addUser('通知爸妈');
+          await this.showTyping();
+          const t1 = '帮您生成了一张图片，发给孩子爸妈看就行 👇';
+          this.addAI(t1);
+          speak(t1);
+          await this.delay(300);
+          this.messages.push({ role: 'notifyCard', content: {
+            title: '📢 游戏管控通知',
+            lines: [
+              '爷爷/奶奶发现孩子用自己的手机玩游戏',
+              '',
+              '请您在「成长守护」小程序中',
+              '帮孩子绑定他的游戏账号',
+              '绑定后防沉迷自动生效：',
+              '',
+              '🎮 仅周五六日 20:00-21:00 可玩',
+              '⏰ 每天最多1小时',
+              '',
+              '—— 来自成长守护平台'
+            ]
+          }});
+          this.scrollDown();
+          await this.delay(500);
+          this.addBtns([
+            { label: '💾 保存图片', type: 'primary', action: 's02_saveNotify' },
+            { label: '📤 直接转发给爸妈', type: '', action: 's02_shareNotify' },
+            { label: '🔄 还是先管我这台手机吧', type: '', action: 's02_report' }
+          ]);
+        },
+
+        async s02_saveNotify() {
+          this.addUser('保存图片');
+          await this.showTyping();
+          this.addSuccess('图片已保存到手机相册 📷');
+          const t = '保存好了！打开微信发给孩子爸妈就行。\n\n要不要我先帮您把<b>您这台手机</b>也管上？孩子借您手机玩也能管住。';
+          this.addAI(t);
+          speak(t);
+          await this.delay(600);
+          this.addBtns([
+            { label: '✅ 好，我这台也管上', type: 'primary', action: 's02_report' },
+            { label: '🤝 先这样，等爸妈弄好', type: '', action: 's02_wait' }
+          ]);
+        },
+
+        async s02_shareNotify() {
+          this.addUser('转发给爸妈');
+          await this.showTyping();
+          const t1 = '正在打开微信分享...';
+          this.addAI(t1);
+          speak(t1);
+          await this.delay(800);
+          this.addSuccess('已打开分享 📤');
+          await this.delay(400);
+          const t = '选好发给谁就行！\n\n发完之后，要不要我先帮您把<b>您这台手机</b>也管上？';
+          this.addAI(t);
+          speak(t);
+          await this.delay(600);
+          this.addBtns([
+            { label: '✅ 好，我这台也管上', type: 'primary', action: 's02_report' },
+            { label: '🤝 先这样，等爸妈弄好', type: '', action: 's02_wait' }
+          ]);
+        },
+
+        async s02_wait() {
+          const t = '好的，等爸妈那边弄好了，孩子的手机就管上了。有需要再来找我！';
+          this.addAI(t);
+          speak(t);
+        },
+
+        async s02_noPhone() {
+          this.addUser('孩子手机不在旁边');
+          await this.showTyping();
+          const t = '没关系！等孩子回来了，打开这个小程序，点那个绿色的大按钮就行。\n\n要不我先帮您设好规矩，等手机上报了就自动生效？';
+          this.addAI(t);
+          speak(t);
+          await this.delay(600);
+          this.addBtns([
+            { label: '✅ 好，先设规矩', type: 'primary', action: 's02_showPlan' }
+          ]);
+        },
+
+        async s02_showPlan() {
+          await this.showTyping();
+          const t2 = '好的，我帮您定个规矩：\n\n👉 孩子每天最多玩<b>一个小时</b>游戏\n\n👉 晚上<b>八点以后</b>就不能玩了\n\n👉 不能拿手机<b>花钱买</b>游戏里的东西\n\n这样行吗？';
+          this.addAI(t2);
+          speak(t2, () => {
+            // After TTS finishes, remind to press button
+            if (this.currentSkill === 'S02') {
+              speak('觉得行，就按那个绿色的大按钮。');
+            }
+          });
+          await this.delay(600);
+          this.addBtns([
+            { label: '✅  行，就这样', type: 'primary', action: 's02_confirm' },
+            { label: '🔄  时间多给点', type: '', action: 's02_more' }
+          ]);
+        },
+
+        async s02_confirm() {
+          this.addUser('🎤 "行"');
+          await this.showTyping();
+          this.addSuccess('好了！帮您设好了');
+          const t3 = '从现在开始，孩子每天最多玩一个小时。晚上八点以后不能玩。也不能花钱买游戏东西。您放心，交给我了！';
+          await this.delay(400);
+          this.addAI(t3);
+          speak(t3, () => {
+            speak('以后想改，再来找我说一声就行。');
+          });
+        },
+
+        async s02_more() {
+          this.addUser('🎤 "多给点时间"');
+          await this.showTyping();
+          const t = '好的，那给<b>两个小时</b>？';
+          this.addAI(t);
+          speak(t);
+          this.addBtns([
+            { label: '✅  两个小时，行', type: 'primary', action: 's02_confirm2' },
+            { label: '⏰  再多一点', type: '', action: 's02_evenMore' }
+          ]);
+        },
+
+        async s02_confirm2() {
+          this.addUser('🎤 "行"');
+          await this.showTyping();
+          this.addSuccess('设成两个小时了');
+          const t = '孩子现在每天最多玩两个小时。晚上八点以后不能玩。您放心！';
+          this.addAI(t);
+          speak(t);
+        },
+
+        async s02_evenMore() {
+          this.addUser('🎤 "再多一点"');
+          await this.showTyping();
+          const t = '那就<b>三个小时</b>吧？不过建议别超过三个小时——对孩子眼睛不好。';
+          this.addAI(t);
+          speak(t);
+          this.addBtns([{ label: '✅  三个小时，行', type: 'primary', action: 's02_confirm' }]);
+        },
+
+        // Voice Input for S02
+        toggleVoiceInput() {
+          if (this.isRecording) {
+            this.stopRecording();
+          } else {
+            this.startRecording();
+          }
+        },
+
+        startRecording() {
+          if (!initASR()) {
+            // Fallback: simulate voice input
+            this.isRecording = true;
+            setTimeout(() => {
+              this.isRecording = false;
+              this.handleVoiceResult('行');
+            }, 2000);
+            return;
+          }
+          this.isRecording = true;
+          recognition.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            this.isRecording = false;
+            this.handleVoiceResult(text);
+          };
+          recognition.onerror = () => {
+            this.isRecording = false;
+          };
+          recognition.onend = () => {
+            this.isRecording = false;
+          };
+          recognition.start();
+        },
+
+        stopRecording() {
+          this.isRecording = false;
+          if (recognition) recognition.stop();
+        },
+
+        handleVoiceResult(text) {
+          this.addUser('🎤 "' + text + '"');
+          const lower = text.toLowerCase();
+          if (lower.includes('行') || lower.includes('好') || lower.includes('可以') || lower.includes('就这样')) {
+            this.s02_confirm();
+          } else if (lower.includes('多') || lower.includes('时间') || lower.includes('长')) {
+            this.s02_more();
+          } else if (lower.includes('不') || lower.includes('算了')) {
+            this.addAI('好的，有需要再来找我。');
+            speak('好的，有需要再来找我。');
+          } else {
+            const reply = '不好意思没听清，您再说一遍？';
+            this.addAI(reply);
+            speak(reply);
+          }
+        },
+
+        // ========== S03 ==========
+        async flowS03() {
+          await this.showTyping();
+          this.addAI('欢迎来到成长守护 👋\n\n我问您<b>3个简单问题</b>，就能帮您设好。\n\n<b>孩子多大了？</b>');
+          this.addBtns([
+            { label: '🎒 小学生（6-12岁）', type: '', action: 's03_q2' },
+            { label: '📚 初中生（13-15岁）', type: '', action: 's03_q2' },
+            { label: '🎓 高中生（16-17岁）', type: '', action: 's03_q2' }
+          ]);
+        },
+        async s03_q2() {
+          this.addUser('🎒 小学生');
+          await this.showTyping();
+          this.addAI('<b>游戏玩得怎么样？</b>');
+          this.addBtns([
+            { label: '😐 还好，想预防', type: '', action: 's03_q3' },
+            { label: '😟 有点多', type: '', action: 's03_q3' },
+            { label: '😱 非常多', type: '', action: 's03_q3' }
+          ]);
+        },
+        async s03_q3() {
+          this.addUser('😟 有点多');
+          await this.showTyping();
+          this.addAI('<b>平时谁管孩子？</b>');
+          this.addBtns([
+            { label: '👩 我自己', type: '', action: 's03_plan' },
+            { label: '👴 爷爷奶奶', type: '', action: 's03_plan' },
+            { label: '👨‍👩‍👦 轮流管', type: '', action: 's03_plan' }
+          ]);
+        },
+        async s03_plan() {
+          this.addUser('👩 我自己');
+          await this.showTyping();
+          this.addAI('帮您整理一下：\n\n📋 <b>基础规则（国家标准，已自动生效）：</b>');
+          this.addPlan([
+            { icon: '🚫', text: '周一到周四：不能玩游戏' },
+            { icon: '🎮', text: '周五六日及假日：20:00-21:00，每天≤1小时' },
+            { icon: '💰', text: '充值限制：12岁以下禁充（按年龄自动适配）' }
+          ]);
+          await this.delay(400);
+          this.addAI('以上是国家规定，实名后自动生效。\n\n📌 <b>我建议您额外设置：</b>\n✅ 开启<b>人脸识别</b>——防孩子冒用您的账号\n✅ <b>绿色手机上报</b>——如果孩子也拿您手机玩');
+          this.addBtns([
+            { label: '✅ 帮我设置这些保护', type: 'primary', action: 's03_done' },
+            { label: 'ℹ️ 先了解一下再说', type: '', action: 's03_done' }
+          ]);
+        },
+        async s03_done() {
+          this.addUser('就这样');
+          await this.showTyping();
+          this.addSuccess('设置完成！您迈出了第一步 👏');
+          await this.delay(400);
+          this.addAI('小贴士：\n📊 每周看游戏报告\n🔄 方案不是死的，可以调\n💬 建议跟孩子聊聊为什么');
+        },
+
+        // ========== S04 ==========
+        async flowS04() {
+          await this.showTyping();
+          this.addAI('您想切换到哪个模式？');
+          this.addBtns([
+            { label: '🏖️ 假期模式——适当放宽', type: 'primary', action: 's04_holiday' },
+            { label: '📚 开学模式——恢复严格', type: '', action: 's04_school' }
+          ]);
+        },
+        async s04_holiday() {
+          this.addUser('假期模式');
+          await this.showTyping();
+          this.addAI('<b>假期模式说明：</b>\n\n📋 国家规定不变——游戏时间仍是20:00-21:00，每天≤1小时\n\n📌 放宽的是您额外加的限制：\n· 如果开了一键禁玩 → 关闭，恢复正常登录\n· 充值限额 → 可适当放宽\n· 人脸识别 → 建议保持');
+          this.addBtns([{ label: '✅ 切换到假期模式', type: 'primary', action: 's04_done' }]);
+        },
+        async s04_school() {
+          this.addUser('开学模式');
+          await this.showTyping();
+          this.addSuccess('已切回开学模式 📚');
+        },
+        async s04_done() {
+          this.addUser('切换');
+          await this.showTyping();
+          this.addSuccess('已切换到假期模式 🏖️');
+          await this.delay(400);
+          this.addAI('假期什么时候结束？设开学日期，届时<b>自动切回</b>。');
+          this.addBtns([
+            { label: '📅 2月17号开学', type: 'primary', action: 's04_date' },
+            { label: '⏭️ 跳过', type: '', action: 's04_skip' }
+          ]);
+        },
+        async s04_date() {
+          this.addUser('2月17号开学');
+          await this.showTyping();
+          this.addAI('记住了 ✅ 2月17日自动切回。假期愉快 😄');
+        },
+        async s04_skip() { this.addAI('好的，需要切回再找我 😊'); },
+
+        // ========== S06 ==========
+        async flowS06() {
+          await this.showTyping();
+          this.addAI('您好！带孙子不容易，游戏的事我来帮您管 😊\n\n<b>孩子游戏玩得多吗？</b>');
+          this.addBtns([
+            { label: '😊 还好，想有个规矩', type: '', action: 's06_mild' },
+            { label: '😟 有点多，说了不听', type: '', action: 's06_mod' },
+            { label: '😱 管不住', type: '', action: 's06_severe' }
+          ]);
+        },
+        async s06_mild() {
+          this.addUser('想有个规矩');
+          await this.showTyping();
+          this.addAI('有规矩比没规矩强。其实国家已经有规定了：');
+          this.addPlan([
+            { icon: '🎮', text: '只有周五六日晚上8点到9点能玩' },
+            { icon: '⏰', text: '每天最多1小时' },
+            { icon: '🚫', text: '周一到周四完全不能玩' },
+            { icon: '💰', text: '充值按年龄有限制' }
+          ]);
+          this.addAI('到时间<b>游戏自动停</b>，您不用跟孩子"抢手机"。\n\n建议您再<b>把手机上报一下</b>——万一孩子拿您手机玩也能管住。');
+          this.addBtns([
+            { label: '✅ 帮我上报手机', type: 'primary', action: 's06_done' },
+            { label: '📱 先通知孩子爸妈', type: '', action: 's06_notify' }
+          ]);
+        },
+        async s06_mod() {
+          this.addUser('说了不听');
+          await this.showTyping();
+          this.addAI('理解😮‍💨 用工具设好后，<b>到点游戏自动停</b>——不需要您跟孩子争。\n\n国家规定是这样的：');
+          this.addPlan([
+            { icon: '🎮', text: '只有周五六日晚上8点到9点能玩' },
+            { icon: '⏰', text: '每天最多1小时' },
+            { icon: '🚫', text: '周一到周四完全不能登录' },
+            { icon: '💰', text: '充值按年龄限制' }
+          ]);
+          this.addAI('<b>到时间游戏自己退出来</b>，孩子想玩也玩不了。\n\n建议同时<b>上报您的手机+通知爸妈</b>。');
+          this.addBtns([
+            { label: '✅ 上报手机+通知爸妈', type: 'primary', action: 's06_both' },
+            { label: '✅ 先上报手机', type: '', action: 's06_done' },
+            { label: '📱 先通知爸妈', type: '', action: 's06_notify' }
+          ]);
+        },
+        async s06_severe() {
+          this.addUser('管不住');
+          await this.showTyping();
+          this.addAI('管不住不是您的问题——现在游戏确实让人停不下来😔\n\n国家规定很严格的：');
+          this.addPlan([
+            { icon: '🎮', text: '只有周五六日晚上8点到9点能玩' },
+            { icon: '⏰', text: '每天最多1小时' },
+            { icon: '🚫', text: '周一到四完全不能玩' },
+            { icon: '💰', text: '充值有严格限制' }
+          ]);
+          this.addAI('建议您做两件事：\n1️⃣ <b>上报您的手机</b>——管住孩子在您手机上玩\n2️⃣ <b>通知爸妈</b>——让他们也知道，远程一起管');
+          this.addBtns([
+            { label: '✅📱 都要（推荐）', type: 'primary', action: 's06_both' },
+            { label: '✅ 先上报手机', type: '', action: 's06_done' },
+            { label: '📱 先通知爸妈', type: '', action: 's06_notify' }
+          ]);
+        },
+        async s06_done() {
+          this.addUser('上报手机');
+          await this.showTyping();
+          this.addSuccess('上报成功！系统自动帮您管 👍');
+          await this.delay(500);
+          this.addAI('几个提示：\n\n1️⃣ <b>到时间自动停</b>——不用您盯着\n\n2️⃣ 孩子不高兴可以说：\n💬 <b>"这是国家规定，爷爷也没办法改。"</b>\n\n3️⃣ 孩子闹别<b>心软</b>——告诉他"问爸妈去"\n\n4️⃣ 建议也<b>开启人脸识别</b>——防孩子冒用您的账号\n\n您辛苦了❤️');
+        },
+        async s06_notify() {
+          this.addUser('通知爸妈');
+          await this.showTyping();
+          this.addAI('帮您生成了一张<b>通知图片</b> 👇\n\n长按图片可以<b>保存到手机</b>，然后发给孩子的爸爸妈妈看。');
+          await this.delay(300);
+          // 生成通知图片
+          this.messages.push({ role: 'notifyCard', content: {
+            title: '📢 游戏管控通知',
+            lines: [
+              '爷爷/奶奶已为孩子设置了游戏管控：',
+              '',
+              '🎮 仅周五六日 20:00-21:00 可玩',
+              '⏰ 每天最多1小时',
+              '📱 已上报手机，防沉迷已生效',
+              '',
+              '如需调整管控方案，请打开',
+              '「成长守护」小程序 → 管控设置',
+              '',
+              '—— 来自成长守护平台'
+            ]
+          }});
+          this.scrollDown();
+          await this.delay(500);
+          this.addBtns([
+            { label: '💾 保存图片', type: 'primary', action: 's06_saveImg' },
+            { label: '📤 直接转发给爸妈', type: '', action: 's06_shareImg' },
+          ]);
+        },
+        async s06_saveImg() {
+          this.addUser('保存图片');
+          await this.showTyping();
+          this.addSuccess('图片已保存到手机相册 📷');
+          await this.delay(400);
+          this.addAI('图片保存好了！您可以打开<b>微信</b>，把图片发给孩子爸妈。\n\n接下来帮您上报手机？');
+          this.addBtns([{ label: '✅ 上报手机', type: 'primary', action: 's06_done' }]);
+        },
+        async s06_shareImg() {
+          this.addUser('转发给爸妈');
+          await this.showTyping();
+          this.addAI('正在打开微信分享...');
+          await this.delay(800);
+          this.addSuccess('已打开分享 📤');
+          await this.delay(400);
+          this.addAI('选好要发给谁就行了！\n\n发完之后，接下来帮您上报手机？');
+          this.addBtns([{ label: '✅ 上报手机', type: 'primary', action: 's06_done' }]);
+        },
+        async s06_both() {
+          this.addUser('上报手机+通知爸妈');
+          await this.showTyping();
+          this.addSuccess('上报成功！系统自动帮您管 👍');
+          await this.delay(500);
+          this.addAI('手机上报好了！接下来帮您生成一张图片，发给孩子爸妈知道这件事：');
+          await this.delay(300);
+          this.messages.push({ role: 'notifyCard', content: {
+            title: '📢 游戏管控通知',
+            lines: [
+              '爷爷/奶奶已为孩子设置了游戏管控：',
+              '',
+              '🎮 仅周五六日 20:00-21:00 可玩',
+              '⏰ 每天最多1小时',
+              '📱 已上报手机，防沉迷已生效',
+              '',
+              '如需调整管控方案，请打开',
+              '「成长守护」小程序 → 管控设置',
+              '',
+              '—— 来自成长守护平台'
+            ]
+          }});
+          this.scrollDown();
+          await this.delay(500);
+          this.addBtns([
+            { label: '💾 保存图片', type: 'primary', action: 's06_bothSave' },
+            { label: '📤 直接转发给爸妈', type: '', action: 's06_bothShare' },
+          ]);
+        },
+        async s06_bothSave() {
+          this.addUser('保存图片');
+          await this.showTyping();
+          this.addSuccess('图片已保存到手机相册 📷');
+          await this.delay(400);
+          this.addAI('都搞定了！👍\n\n1️⃣ 手机已上报，防沉迷自动生效\n2️⃣ 图片已保存，发给爸妈就行\n\n孩子不高兴可以说：\n💬 <b>"这是国家规定，爷爷也没办法改。"</b>\n\n您辛苦了❤️');
+        },
+        async s06_bothShare() {
+          this.addUser('转发给爸妈');
+          await this.showTyping();
+          this.addAI('正在打开微信分享...');
+          await this.delay(800);
+          this.addSuccess('已打开分享 📤');
+          await this.delay(400);
+          this.addAI('都搞定了！👍\n\n1️⃣ 手机已上报，防沉迷自动生效\n2️⃣ 分享给爸妈，让他们也知道\n\n孩子不高兴可以说：\n💬 <b>"这是国家规定，爷爷也没办法改。"</b>\n\n您辛苦了❤️');
+        },
+
+        // ========== Helpers ==========
+        handleButton(btn) { if (this[btn.action]) this[btn.action](); },
+
+        addAI(content) {
+          this.messages = this.messages.filter(m => m.role !== 'typing');
+          this.messages.push({ role: 'ai', content });
+          this.scrollDown();
+        },
+        addUser(content) {
+          this.messages = this.messages.filter(m => m.role !== 'typing' && m.role !== 'buttons' && m.role !== 'reportBtn');
+          this.messages.push({ role: 'user', content });
+          this.scrollDown();
+        },
+        addBtns(buttons) {
+          this.messages.push({ role: 'buttons', buttons });
+          this.scrollDown();
+        },
+        addPlan(items) {
+          this.messages = this.messages.filter(m => m.role !== 'typing');
+          this.messages.push({ role: 'plan', items });
+          this.scrollDown();
+        },
+        addSuccess(content) {
+          this.messages = this.messages.filter(m => m.role !== 'typing');
+          this.messages.push({ role: 'success', content });
+          this.scrollDown();
+        },
+        async showTyping() {
+          this.messages.push({ role: 'typing' });
+          this.scrollDown();
+          await this.delay(700 + Math.random() * 500);
+        },
+        scrollDown() {
+          this.$nextTick(() => {
+            const el = document.getElementById('chatArea');
+            if (el) el.scrollTop = el.scrollHeight;
+          });
+        },
+        delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+      }
+    }
+  </script>
+</body>
+</html>

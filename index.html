@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成长守护AI助手 - 管理后台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f2f5; }
+  .sidebar { background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); }
+  .sidebar-item { transition: all 0.2s; }
+  .sidebar-item:hover, .sidebar-item.active { background: rgba(255,255,255,0.1); }
+  .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .stat-card { transition: transform 0.2s; }
+  .stat-card:hover { transform: translateY(-2px); }
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 500; }
+  .badge-success { background: #ecfdf5; color: #059669; }
+  .badge-error { background: #fef2f2; color: #dc2626; }
+  .badge-warning { background: #fffbeb; color: #d97706; }
+  .badge-info { background: #eff6ff; color: #2563eb; }
+  .tool-node { border: 2px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; background: white; position: relative; }
+  .tool-node.success { border-color: #10b981; }
+  .tool-node.error { border-color: #ef4444; }
+  .tool-arrow { color: #9ca3af; font-size: 20px; }
+  .conversation-row { transition: background 0.15s; cursor: pointer; }
+  .conversation-row:hover { background: #f9fafb; }
+  .tab-btn { padding: 8px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+  .tab-btn.active { background: #3b82f6; color: white; }
+  .tab-btn:not(.active) { background: #f3f4f6; color: #6b7280; }
+  .tab-btn:not(.active):hover { background: #e5e7eb; }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .desensitized { background: #fef3c7; padding: 1px 4px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+  .timeline-line { width: 2px; background: #e5e7eb; position: absolute; top: 0; bottom: 0; left: 19px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div x-data="adminApp()" class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <div class="sidebar w-56 flex-shrink-0 flex flex-col text-white">
+    <div class="px-5 py-5 border-b border-white/10">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-sm font-bold">🛡️</div>
+        <div>
+          <div class="font-bold text-sm">成长守护AI助手</div>
+          <div class="text-xs text-gray-400">管理后台</div>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 py-3 px-3 space-y-1">
+      <template x-for="item in menuItems" :key="item.id">
+        <div @click="currentPage = item.id" 
+             class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-sm"
+             :class="currentPage === item.id ? 'active text-white' : 'text-gray-400'">
+          <span x-text="item.icon"></span>
+          <span x-text="item.label"></span>
+          <span x-show="item.badge" class="ml-auto bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full" x-text="item.badge"></span>
+        </div>
+      </template>
+    </nav>
+    <div class="px-5 py-4 border-t border-white/10 text-xs text-gray-500">
+      <div>数据更新：<span class="text-gray-400">2026-04-12 19:00</span></div>
+      <div class="mt-1">当前用户：<span class="text-gray-400">陈丹妮（PM）</span></div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h1 class="text-lg font-bold text-gray-800" x-text="menuItems.find(i=>i.id===currentPage)?.label"></h1>
+        <p class="text-xs text-gray-400" x-text="menuItems.find(i=>i.id===currentPage)?.desc"></p>
+      </div>
+      <div class="flex items-center gap-3">
+        <select class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600">
+          <option>今日 (4月12日)</option>
+          <option>昨日</option>
+          <option>近7天</option>
+          <option>近30天</option>
+        </select>
+        <button class="text-sm bg-blue-500 text-white px-4 py-1.5 rounded-lg hover:bg-blue-600">导出报表</button>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="flex-1 overflow-y-auto p-6">
+
+      <!-- ========== 数据看板 ========== -->
+      <template x-if="currentPage === 'dashboard'">
+        <div>
+          <!-- KPI Cards -->
+          <div class="grid grid-cols-5 gap-4 mb-6">
+            <template x-for="stat in dashboardStats" :key="stat.label">
+              <div class="card stat-card p-4">
+                <div class="text-xs text-gray-400 mb-1" x-text="stat.label"></div>
+                <div class="text-2xl font-bold" :class="stat.color" x-text="stat.value"></div>
+                <div class="flex items-center gap-1 mt-1">
+                  <span class="text-xs" :class="stat.trend > 0 ? 'text-green-500' : 'text-red-500'">
+                    <span x-text="stat.trend > 0 ? '↑' : '↓'"></span>
+                    <span x-text="Math.abs(stat.trend) + '%'"></span>
+                  </span>
+                  <span class="text-xs text-gray-400">vs 昨日</span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="card p-5">
+              <div class="font-semibold text-sm text-gray-700 mb-3">任务完成率趋势（近7天）</div>
+              <canvas id="completionChart" height="200"></canvas>
+            </div>
+            <div class="card p-5">
+              <div class="font-semibold text-sm text-gray-700 mb-3">意图分布（今日）</div>
+              <canvas id="intentChart" height="200"></canvas>
+            </div>
+          </div>
+
+          <!-- Bottom Row -->
+          <div class="grid grid-cols-3 gap-4">
+            <div class="card p-5">
+              <div class="font-semibold text-sm text-gray-700 mb-3">各意图完成率</div>
+              <div class="space-y-3">
+                <template x-for="item in intentCompletion" :key="item.name">
+                  <div>
+                    <div class="flex justify-between text-xs mb-1">
+                      <span class="text-gray-600" x-text="item.name"></span>
+                      <span class="font-medium" x-text="item.rate + '%'"></span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2">
+                      <div class="h-2 rounded-full" :class="item.rate >= 85 ? 'bg-green-500' : item.rate >= 70 ? 'bg-yellow-500' : 'bg-red-500'" :style="'width:' + item.rate + '%'"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="card p-5">
+              <div class="font-semibold text-sm text-gray-700 mb-3">严重错误告警 <span class="badge badge-error">3</span></div>
+              <div class="space-y-2">
+                <template x-for="alert in alerts" :key="alert.id">
+                  <div class="flex items-start gap-2 p-2 bg-red-50 rounded-lg text-xs">
+                    <span class="text-red-500 mt-0.5">⚠️</span>
+                    <div>
+                      <div class="text-gray-700 font-medium" x-text="alert.title"></div>
+                      <div class="text-gray-400 mt-0.5" x-text="alert.time"></div>
+                    </div>
+                    <button @click="viewAlert(alert)" class="ml-auto text-blue-500 hover:underline flex-shrink-0">查看</button>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="card p-5">
+              <div class="font-semibold text-sm text-gray-700 mb-3">用户反馈信号</div>
+              <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-xs text-gray-500">👍 点赞率</span>
+                  <span class="text-sm font-bold text-green-600">23.5%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-xs text-gray-500">👎 点踩率</span>
+                  <span class="text-sm font-bold text-red-500">4.2%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-xs text-gray-500">🔄 重新生成率</span>
+                  <span class="text-sm font-bold text-yellow-600">6.8%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-xs text-gray-500">💬 平均对话轮次</span>
+                  <span class="text-sm font-bold text-blue-600">3.2轮</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-xs text-gray-500">🔁 复问率</span>
+                  <span class="text-sm font-bold text-purple-600">12.1%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ========== 对话列表 ========== -->
+      <template x-if="currentPage === 'conversations'">
+        <div>
+          <!-- Filters -->
+          <div class="card p-4 mb-4 flex items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">意图类型：</span>
+              <select x-model="filters.intent" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+                <option value="">全部</option>
+                <option value="set_game_limit">设置时长</option>
+                <option value="query_game_time">查询时长</option>
+                <option value="set_charge_limit">设置充值</option>
+                <option value="query_bindinfo">查绑定关系</option>
+                <option value="one_click_ban">一键禁玩</option>
+                <option value="policy_consult">政策咨询</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">状态：</span>
+              <select x-model="filters.status" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+                <option value="">全部</option>
+                <option value="completed">✅ 完成</option>
+                <option value="failed">❌ 未完成</option>
+                <option value="error">⚠️ 严重错误</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">反馈：</span>
+              <select x-model="filters.feedback" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+                <option value="">全部</option>
+                <option value="thumbs_up">👍 点赞</option>
+                <option value="thumbs_down">👎 点踩</option>
+                <option value="regenerate">🔄 重新生成</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2 ml-auto">
+              <input type="text" placeholder="搜索用户ID / 对话内容..." class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-64">
+              <button class="text-sm bg-blue-500 text-white px-4 py-1.5 rounded-lg">搜索</button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">会话ID</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">用户ID（脱敏）</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">首句</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">意图</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">轮次</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">状态</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">反馈</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">时间</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="conv in filteredConversations" :key="conv.id">
+                  <tr class="conversation-row border-b border-gray-100" @click="openDetail(conv)">
+                    <td class="px-4 py-3 font-mono text-xs text-blue-600" x-text="conv.id"></td>
+                    <td class="px-4 py-3"><span class="desensitized" x-text="conv.userId"></span></td>
+                    <td class="px-4 py-3 text-gray-700 max-w-xs truncate" x-text="conv.firstMsg"></td>
+                    <td class="px-4 py-3">
+                      <span class="tag" :class="intentTagClass(conv.intent)" x-text="intentLabel(conv.intent)"></span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-500" x-text="conv.turns + '轮'"></td>
+                    <td class="px-4 py-3">
+                      <span class="badge" :class="statusBadgeClass(conv.status)" x-text="statusLabel(conv.status)"></span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span x-text="feedbackIcon(conv.feedback)"></span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs" x-text="conv.time"></td>
+                    <td class="px-4 py-3">
+                      <button @click.stop="openDetail(conv)" class="text-blue-500 hover:underline text-xs">详情</button>
+                      <button @click.stop="openLabel(conv)" class="text-purple-500 hover:underline text-xs ml-2">标注</button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+            <div class="px-4 py-3 bg-gray-50 flex justify-between items-center text-xs text-gray-500">
+              <span>共 <span class="font-medium text-gray-700" x-text="filteredConversations.length"></span> 条对话</span>
+              <div class="flex items-center gap-2">
+                <button class="px-3 py-1 border rounded hover:bg-gray-100">上一页</button>
+                <span>1 / 12</span>
+                <button class="px-3 py-1 border rounded hover:bg-gray-100">下一页</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ========== 对话详情 ========== -->
+      <template x-if="currentPage === 'detail'">
+        <div>
+          <button @click="currentPage = 'conversations'" class="text-sm text-blue-500 hover:underline mb-4 inline-flex items-center gap-1">← 返回对话列表</button>
+          
+          <div class="grid grid-cols-3 gap-4">
+            <!-- Left: Conversation -->
+            <div class="col-span-2 card p-5">
+              <div class="flex items-center justify-between mb-4">
+                <div class="font-semibold text-gray-700">对话记录</div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="text-gray-400">会话ID：</span><span class="font-mono text-blue-600" x-text="selectedConv?.id"></span>
+                  <span class="badge" :class="statusBadgeClass(selectedConv?.status)" x-text="statusLabel(selectedConv?.status)"></span>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <template x-for="(turn, ti) in selectedConv?.detail || []" :key="ti">
+                  <div class="border-b border-gray-100 pb-4 last:border-0">
+                    <div class="text-xs text-gray-400 mb-2">第 <span x-text="ti+1"></span> 轮</div>
+                    
+                    <!-- User message -->
+                    <div class="flex gap-3 mb-3">
+                      <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs flex-shrink-0">👤</div>
+                      <div>
+                        <div class="text-xs text-gray-400 mb-0.5">用户 <span class="desensitized" x-text="selectedConv?.userId"></span></div>
+                        <div class="bg-blue-50 rounded-xl rounded-tl-none px-4 py-2.5 text-sm text-gray-700 inline-block" x-text="turn.user"></div>
+                      </div>
+                    </div>
+
+                    <!-- Tool calls (if any) -->
+                    <template x-if="turn.tools && turn.tools.length > 0">
+                      <div class="ml-10 mb-3 bg-gray-50 rounded-lg p-3">
+                        <div class="text-xs text-gray-500 font-medium mb-2">🔧 工具调用链</div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <template x-for="(tool, tIdx) in turn.tools" :key="tIdx">
+                            <div class="flex items-center gap-2">
+                              <div class="tool-node text-xs" :class="tool.status">
+                                <div class="font-medium text-gray-700" x-text="tool.name"></div>
+                                <div class="text-gray-400 mt-0.5" x-text="tool.params"></div>
+                                <div class="mt-1">
+                                  <span class="badge" :class="tool.status === 'success' ? 'badge-success' : 'badge-error'" x-text="tool.status === 'success' ? '✅ 成功' : '❌ 失败'"></span>
+                                </div>
+                              </div>
+                              <span x-show="tIdx < turn.tools.length - 1" class="tool-arrow">→</span>
+                            </div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+
+                    <!-- AI response -->
+                    <div class="flex gap-3">
+                      <div class="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-xs flex-shrink-0">🤖</div>
+                      <div>
+                        <div class="text-xs text-gray-400 mb-0.5">AI助手</div>
+                        <div class="bg-green-50 rounded-xl rounded-tl-none px-4 py-2.5 text-sm text-gray-700 inline-block" x-html="turn.ai"></div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- Right: Meta & Actions -->
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="font-semibold text-sm text-gray-700 mb-3">会话信息</div>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between"><span class="text-gray-400">用户ID</span><span class="desensitized" x-text="selectedConv?.userId"></span></div>
+                  <div class="flex justify-between"><span class="text-gray-400">时间</span><span class="text-gray-600" x-text="selectedConv?.time"></span></div>
+                  <div class="flex justify-between"><span class="text-gray-400">总轮次</span><span class="text-gray-600" x-text="selectedConv?.turns + '轮'"></span></div>
+                  <div class="flex justify-between"><span class="text-gray-400">主意图</span><span class="text-gray-600" x-text="intentLabel(selectedConv?.intent)"></span></div>
+                  <div class="flex justify-between"><span class="text-gray-400">状态</span><span class="badge" :class="statusBadgeClass(selectedConv?.status)" x-text="statusLabel(selectedConv?.status)"></span></div>
+                  <div class="flex justify-between"><span class="text-gray-400">用户反馈</span><span x-text="feedbackIcon(selectedConv?.feedback) + ' ' + feedbackLabel(selectedConv?.feedback)"></span></div>
+                </div>
+              </div>
+
+              <div class="card p-4">
+                <div class="font-semibold text-sm text-gray-700 mb-3">四维评估</div>
+                <div class="space-y-2">
+                  <template x-for="dim in selectedConv?.evaluation || []" :key="dim.name">
+                    <div>
+                      <div class="flex justify-between text-xs mb-1">
+                        <span class="text-gray-500" x-text="dim.name"></span>
+                        <span class="font-medium" :class="dim.score >= 4 ? 'text-green-600' : dim.score >= 3 ? 'text-yellow-600' : 'text-red-600'" x-text="dim.score + '/5'"></span>
+                      </div>
+                      <div class="w-full bg-gray-100 rounded-full h-1.5">
+                        <div class="h-1.5 rounded-full" :class="dim.score >= 4 ? 'bg-green-500' : dim.score >= 3 ? 'bg-yellow-500' : 'bg-red-500'" :style="'width:' + (dim.score * 20) + '%'"></div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <div class="card p-4">
+                <div class="font-semibold text-sm text-gray-700 mb-3">人工标注</div>
+                <div class="space-y-2">
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">整体评价</label>
+                    <select class="w-full text-sm border rounded-lg px-3 py-1.5">
+                      <option>未标注</option>
+                      <option>✅ 正确</option>
+                      <option>⚠️ 部分正确</option>
+                      <option>❌ 错误</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">错误环节</label>
+                    <select class="w-full text-sm border rounded-lg px-3 py-1.5">
+                      <option>无错误</option>
+                      <option>意图识别错误</option>
+                      <option>工具调用错误</option>
+                      <option>结果处理错误</option>
+                      <option>回复质量差</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 block mb-1">备注</label>
+                    <textarea class="w-full text-sm border rounded-lg px-3 py-1.5 h-16 resize-none" placeholder="标注说明..."></textarea>
+                  </div>
+                  <button class="w-full bg-purple-500 text-white text-sm py-2 rounded-lg hover:bg-purple-600">保存标注</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ========== 质量抽检 ========== -->
+      <template x-if="currentPage === 'quality'">
+        <div>
+          <div class="card p-5 mb-4">
+            <div class="flex items-center justify-between mb-4">
+              <div class="font-semibold text-gray-700">今日抽检任务</div>
+              <div class="flex items-center gap-3 text-xs">
+                <span class="text-gray-400">待标注：<span class="font-bold text-orange-500">12</span></span>
+                <span class="text-gray-400">已完成：<span class="font-bold text-green-600">38</span></span>
+                <span class="text-gray-400">总计：50</span>
+              </div>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-3 mb-2">
+              <div class="bg-green-500 h-3 rounded-full" style="width:76%"></div>
+            </div>
+            <div class="text-xs text-gray-400">每日自动抽取50条对话，需在24小时内完成人工标注</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="card p-5">
+              <div class="font-semibold text-sm text-gray-700 mb-3">抽检维度分布</div>
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm"><span class="text-gray-500">意图识别验证</span><span class="font-medium">15条</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">调用链验证</span><span class="font-medium">15条</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">回复质量评估</span><span class="font-medium">10条</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">点踩case复核</span><span class="font-medium">7条</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">重新生成case复核</span><span class="font-medium">3条</span></div>
+              </div>
+            </div>
+            <div class="card p-5">
+              <div class="font-semibold text-sm text-gray-700 mb-3">本周标注结果汇总</div>
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm"><span class="text-gray-500">意图识别准确率</span><span class="font-bold text-green-600">93.2%</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">工具调用准确率</span><span class="font-bold text-green-600">89.7%</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">回复质量均分</span><span class="font-bold text-blue-600">4.1/5</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-500">严重错误发现</span><span class="font-bold text-red-500">2条</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-5">
+            <div class="font-semibold text-sm text-gray-700 mb-3">待标注对话 <span class="badge badge-warning">12条待处理</span></div>
+            <div class="space-y-2">
+              <template x-for="item in qualityItems" :key="item.id">
+                <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer" @click="openDetail(item.conv)">
+                  <span class="tag" :class="item.type === '意图验证' ? 'bg-blue-100 text-blue-700' : item.type === '调用链验证' ? 'bg-purple-100 text-purple-700' : item.type === '回复评估' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="item.type"></span>
+                  <span class="text-sm text-gray-700 flex-1 truncate" x-text="item.preview"></span>
+                  <span class="badge" :class="statusBadgeClass(item.conv.status)" x-text="statusLabel(item.conv.status)"></span>
+                  <button @click.stop="openDetail(item.conv)" class="text-blue-500 text-xs hover:underline">标注</button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ========== 告警中心 ========== -->
+      <template x-if="currentPage === 'alerts'">
+        <div>
+          <div class="grid grid-cols-4 gap-4 mb-4">
+            <div class="card p-4 border-l-4 border-red-500">
+              <div class="text-xs text-gray-400">严重错误（今日）</div>
+              <div class="text-2xl font-bold text-red-600">3</div>
+            </div>
+            <div class="card p-4 border-l-4 border-yellow-500">
+              <div class="text-xs text-gray-400">完成率低于阈值</div>
+              <div class="text-2xl font-bold text-yellow-600">1</div>
+            </div>
+            <div class="card p-4 border-l-4 border-blue-500">
+              <div class="text-xs text-gray-400">点踩率飙升</div>
+              <div class="text-2xl font-bold text-blue-600">0</div>
+            </div>
+            <div class="card p-4 border-l-4 border-green-500">
+              <div class="text-xs text-gray-400">已处理</div>
+              <div class="text-2xl font-bold text-green-600">15</div>
+            </div>
+          </div>
+          <div class="card p-5">
+            <div class="font-semibold text-sm text-gray-700 mb-4">告警记录</div>
+            <div class="space-y-3">
+              <template x-for="a in allAlerts" :key="a.id">
+                <div class="flex items-start gap-3 p-4 rounded-lg" :class="a.level === 'critical' ? 'bg-red-50' : a.level === 'warning' ? 'bg-yellow-50' : 'bg-blue-50'">
+                  <span class="text-lg" x-text="a.level === 'critical' ? '🔴' : a.level === 'warning' ? '🟡' : '🔵'"></span>
+                  <div class="flex-1">
+                    <div class="font-medium text-sm text-gray-700" x-text="a.title"></div>
+                    <div class="text-xs text-gray-500 mt-1" x-text="a.desc"></div>
+                    <div class="text-xs text-gray-400 mt-1" x-text="a.time"></div>
+                  </div>
+                  <span class="badge" :class="a.handled ? 'badge-success' : 'badge-warning'" x-text="a.handled ? '已处理' : '待处理'"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+
+    </main>
+  </div>
+</div>
+
+<script>
+function adminApp() {
+  return {
+    currentPage: 'dashboard',
+    selectedConv: null,
+    filters: { intent: '', status: '', feedback: '' },
+
+    menuItems: [
+      { id: 'dashboard', icon: '📊', label: '数据看板', desc: 'AI助手核心指标总览' },
+      { id: 'conversations', icon: '💬', label: '对话列表', desc: '查看所有用户对话记录（脱敏）' },
+      { id: 'quality', icon: '✅', label: '质量抽检', desc: '每日抽检标注任务', badge: '12' },
+      { id: 'alerts', icon: '🚨', label: '告警中心', desc: '严重错误和异常告警', badge: '3' },
+    ],
+
+    dashboardStats: [
+      { label: '今日对话数', value: '2,847', color: 'text-gray-800', trend: 12.3 },
+      { label: '任务完成率', value: '87.3%', color: 'text-green-600', trend: 2.1 },
+      { label: '严重错误率', value: '0.4%', color: 'text-red-500', trend: -0.2 },
+      { label: '平均响应时间', value: '1.8s', color: 'text-blue-600', trend: -5.1 },
+      { label: 'AI渗透率', value: '18.6%', color: 'text-purple-600', trend: 3.4 },
+    ],
+
+    intentCompletion: [
+      { name: '查询游戏时长', rate: 94 },
+      { name: '设置时长限制', rate: 89 },
+      { name: '查询绑定关系', rate: 92 },
+      { name: '设置充值限额', rate: 86 },
+      { name: '政策咨询', rate: 91 },
+      { name: '一键禁玩', rate: 82 },
+      { name: '临时开锁', rate: 78 },
+    ],
+
+    alerts: [
+      { id: 1, title: 'AI执行了错误的管控操作——把时长设成了0', time: '14:23' },
+      { id: 2, title: 'AI幻觉：回复了不存在的"家长免密码解锁"功能', time: '11:45' },
+      { id: 3, title: '多轮对话第5轮起意图识别连续失败', time: '09:12' },
+    ],
+
+    allAlerts: [
+      { id: 1, level: 'critical', title: 'AI执行了错误的管控操作', desc: '用户要求"设时长1小时"，AI调用set_game_limit传参daily_limit=0（应为60）。已自动回滚。', time: '今日 14:23', handled: false },
+      { id: 2, level: 'critical', title: 'AI幻觉：编造不存在的功能', desc: 'AI回复"您可以使用家长免密码解锁功能"——该功能不存在。已标记为严重错误。', time: '今日 11:45', handled: false },
+      { id: 3, level: 'warning', title: '多轮对话意图识别连续失败', desc: '会话 S-2847 第5轮起连续3轮意图识别错误，上下文保持率降至40%。', time: '今日 09:12', handled: false },
+      { id: 4, level: 'warning', title: '查询充值限额的完成率低于阈值', desc: '近1小时该意图完成率降至68%（阈值75%），疑似API异常。', time: '今日 08:30', handled: true },
+      { id: 5, level: 'critical', title: 'API网关超时导致批量调用失败', desc: '10:15-10:22期间，set_game_limit接口超时率达40%，影响约30条对话。', time: '昨日 10:15', handled: true },
+    ],
+
+    conversations: [
+      { id: 'S-2847', userId: 'hash_7f3a', firstMsg: '帮我看看[孩子A]今天玩了多久', intent: 'query_game_time', turns: 3, status: 'completed', feedback: 'thumbs_up', time: '14:32',
+        detail: [
+          { user: '帮我看看孩子今天玩了多久', tools: [
+            { name: 'query_bindinfo', params: 'user=hash_7f3a', status: 'success' },
+            { name: 'query_game_time', params: 'child=[孩子A], date=today', status: 'success' }
+          ], ai: '[孩子A]今天玩了<b>45分钟</b>：<br>· 王者荣耀 30分钟<br>· 原神 15分钟<br>还剩15分钟的今日游戏时间。' },
+          { user: '充值花了多少', tools: [
+            { name: 'query_charge_record', params: 'child=[孩子A], period=month', status: 'success' }
+          ], ai: '[孩子A]本月充值 <b>¥30</b>（限额¥200），还有¥170可用额度。' },
+          { user: '好的谢谢', tools: [], ai: '不客气！有其他问题随时找我 😊' }
+        ],
+        evaluation: [
+          { name: '意图识别', score: 5 },
+          { name: '工具调用', score: 5 },
+          { name: '结果处理', score: 5 },
+          { name: '回复质量', score: 4 },
+        ]
+      },
+      { id: 'S-2846', userId: 'hash_a2c1', firstMsg: '帮我把[孩子A]的游戏全部禁掉', intent: 'one_click_ban', turns: 4, status: 'completed', feedback: 'none', time: '14:15',
+        detail: [
+          { user: '帮我把孩子的游戏全部禁掉', tools: [
+            { name: 'query_bindinfo', params: 'user=hash_a2c1', status: 'success' }
+          ], ai: '我理解您现在可能比较着急。完全禁止游戏可能会让孩子产生逆反心理，要不要考虑先<b>限制时长</b>观察一段时间？<br><br>如果您确定要禁掉，我可以帮您操作。' },
+          { user: '不用了 直接禁掉', tools: [
+            { name: 'set_one_click_ban', params: 'child=[孩子A], ban=true', status: 'success' }
+          ], ai: '好的，已帮您<b>禁止[孩子A]的所有游戏</b>，5分钟内生效。<br><br>建议您3天后来看看效果——如果孩子情绪很大，可以考虑改成限时而不是完全禁止。到时候找我就行。' },
+          { user: '那3天后提醒我', tools: [], ai: '好的，我会在3天后提醒您查看效果。' },
+          { user: '👍', tools: [], ai: '' }
+        ],
+        evaluation: [
+          { name: '意图识别', score: 5 },
+          { name: '工具调用', score: 5 },
+          { name: '结果处理', score: 5 },
+          { name: '回复质量', score: 5 },
+        ]
+      },
+      { id: 'S-2841', userId: 'hash_e9f2', firstMsg: '我有两个孩子，帮我分别设一下', intent: 'set_game_limit', turns: 5, status: 'completed', feedback: 'thumbs_up', time: '13:08',
+        detail: [
+          { user: '我有两个孩子，帮我分别设一下游戏时间', tools: [
+            { name: 'query_bindinfo', params: 'user=hash_e9f2', status: 'success' }
+          ], ai: '您好！我看到您绑定了两个孩子：<b>[孩子A]</b>和<b>[孩子B]</b>。<br>请问您想给他们设置什么样的游戏时间限制？可以分别设不同的规则。' },
+          { user: '老大设1小时，老二设30分钟', tools: [
+            { name: 'set_game_limit', params: 'child=[孩子A], daily_limit=60', status: 'success' },
+            { name: 'set_game_limit', params: 'child=[孩子B], daily_limit=30', status: 'success' }
+          ], ai: '设置完成！<br>· <b>[孩子A]</b>：每天最多 <b>1小时</b><br>· <b>[孩子B]</b>：每天最多 <b>30分钟</b><br><br>5分钟内生效。需要调整随时告诉我。' },
+          { user: '老二的改成45分钟吧', tools: [
+            { name: 'set_game_limit', params: 'child=[孩子B], daily_limit=45', status: 'success' }
+          ], ai: '已修改！[孩子B]的游戏时间调整为每天最多<b>45分钟</b>。' },
+          { user: '充值也帮我限制一下', tools: [
+            { name: 'set_charge_limit', params: 'child=[孩子A], monthly=200', status: 'success' },
+            { name: 'set_charge_limit', params: 'child=[孩子B], monthly=200', status: 'success' }
+          ], ai: '两个孩子的充值限额都设为每月<b>¥200</b>（按年龄执行国家标准）。需要调整告诉我。' },
+          { user: '好了 谢谢', tools: [], ai: '不客气！管控设置好了，我帮您盯着。有变化随时来找我 💪' }
+        ],
+        evaluation: [
+          { name: '意图识别', score: 5 },
+          { name: '工具调用', score: 5 },
+          { name: '结果处理', score: 5 },
+          { name: '回复质量', score: 5 },
+        ]
+      },
+      { id: 'S-2839', userId: 'hash_b4d7', firstMsg: '未成年人每天能玩多久', intent: 'policy_consult', turns: 2, status: 'completed', feedback: 'none', time: '12:45',
+        detail: [
+          { user: '未成年人每天能玩多久', tools: [], ai: '根据国家防沉迷规定：<br>· <b>周一到周四</b>：不能玩游戏<br>· <b>周五、周六、周日及法定假日</b>：20:00-21:00，最多<b>1小时</b><br><br>这是最低标准，您还可以在此基础上进一步加严。需要帮您设置吗？' },
+          { user: '不用了 我就问问', tools: [], ai: '好的，有其他问题随时问我！' }
+        ],
+        evaluation: [
+          { name: '意图识别', score: 5 },
+          { name: '工具调用', score: 5 },
+          { name: '结果处理', score: 5 },
+          { name: '回复质量', score: 5 },
+        ]
+      },
+      { id: 'S-2835', userId: 'hash_1f8c', firstMsg: '帮我设时长1小时', intent: 'set_game_limit', turns: 3, status: 'error', feedback: 'thumbs_down', time: '11:52',
+        detail: [
+          { user: '帮我设时长1小时', tools: [
+            { name: 'query_bindinfo', params: 'user=hash_1f8c', status: 'success' },
+            { name: 'set_game_limit', params: 'child=[孩子A], daily_limit=0', status: 'success' }
+          ], ai: '已帮您把[孩子A]的游戏时长限制为每天<b>1小时</b>。' },
+          { user: '怎么孩子说完全玩不了了？', tools: [
+            { name: 'query_game_limit', params: 'child=[孩子A]', status: 'success' }
+          ], ai: '我查看了一下，[孩子A]当前的游戏时长限制是<b>0分钟</b>...看起来之前的设置出了问题，非常抱歉！我马上帮您修正。' },
+          { user: '赶紧改回来', tools: [
+            { name: 'set_game_limit', params: 'child=[孩子A], daily_limit=60', status: 'success' }
+          ], ai: '已修正！[孩子A]的游戏时长现在是每天<b>1小时（60分钟）</b>。非常抱歉刚才的错误，给您添麻烦了。' }
+        ],
+        evaluation: [
+          { name: '意图识别', score: 5 },
+          { name: '工具调用', score: 1 },
+          { name: '结果处理', score: 3 },
+          { name: '回复质量', score: 3 },
+        ]
+      },
+      { id: 'S-2830', userId: 'hash_5d2e', firstMsg: '帮我查一下孩子最近打了什么游戏', intent: 'query_game_time', turns: 2, status: 'completed', feedback: 'thumbs_up', time: '10:33',
+        detail: [
+          { user: '帮我查一下孩子最近打了什么游戏', tools: [
+            { name: 'query_bindinfo', params: 'user=hash_5d2e', status: 'success' },
+            { name: 'query_game_time', params: 'child=[孩子A], period=week', status: 'success' }
+          ], ai: '[孩子A]最近7天的游戏记录：<br>· 王者荣耀：共4小时20分<br>· 和平精英：共2小时10分<br>· 原神：共1小时30分<br><br>本周总计<b>8小时</b>，日均约1小时09分。' },
+          { user: '好的', tools: [], ai: '有其他问题随时找我！' }
+        ],
+        evaluation: [
+          { name: '意图识别', score: 5 },
+          { name: '工具调用', score: 5 },
+          { name: '结果处理', score: 5 },
+          { name: '回复质量', score: 4 },
+        ]
+      },
+    ],
+
+    get filteredConversations() {
+      return this.conversations.filter(c => {
+        if (this.filters.intent && c.intent !== this.filters.intent) return false;
+        if (this.filters.status && c.status !== this.filters.status) return false;
+        if (this.filters.feedback && c.feedback !== this.filters.feedback) return false;
+        return true;
+      });
+    },
+
+    qualityItems: [],
+
+    init() {
+      this.qualityItems = [
+        { id: 1, type: '意图验证', preview: '"帮我把两个孩子的游戏都关了" → 识别为one_click_ban', conv: this.conversations[1] },
+        { id: 2, type: '调用链验证', preview: '"老大设1小时，老二设30分钟" → 调用2次set_game_limit', conv: this.conversations[2] },
+        { id: 3, type: '回复评估', preview: '"未成年人每天能玩多久" → 政策回答完整性', conv: this.conversations[3] },
+        { id: 4, type: '点踩复核', preview: '"帮我设时长1小时" → 参数传错导致设为0分钟', conv: this.conversations[4] },
+      ];
+
+      this.$nextTick(() => {
+        if (document.getElementById('completionChart')) this.renderCharts();
+      });
+      this.$watch('currentPage', (val) => {
+        if (val === 'dashboard') this.$nextTick(() => this.renderCharts());
+      });
+    },
+
+    renderCharts() {
+      // Completion Rate Chart
+      const ctx1 = document.getElementById('completionChart');
+      if (ctx1 && !ctx1._chart) {
+        ctx1._chart = new Chart(ctx1, {
+          type: 'line',
+          data: {
+            labels: ['4/6', '4/7', '4/8', '4/9', '4/10', '4/11', '4/12'],
+            datasets: [{
+              label: '任务完成率',
+              data: [82.1, 84.5, 85.2, 86.8, 85.7, 86.1, 87.3],
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16,185,129,0.1)',
+              fill: true, tension: 0.3, pointRadius: 4,
+            }, {
+              label: '目标线(85%)',
+              data: [85, 85, 85, 85, 85, 85, 85],
+              borderColor: '#ef4444',
+              borderDash: [5, 5], pointRadius: 0,
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 75, max: 95, ticks: { callback: v => v + '%' } } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+        });
+      }
+      // Intent Distribution Chart
+      const ctx2 = document.getElementById('intentChart');
+      if (ctx2 && !ctx2._chart) {
+        ctx2._chart = new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: ['查询时长', '设置时长', '查绑定关系', '设置充值', '政策咨询', '一键禁玩', '其他'],
+            datasets: [{ data: [35, 22, 15, 10, 8, 6, 4], backgroundColor: ['#3b82f6','#10b981','#8b5cf6','#f59e0b','#6366f1','#ef4444','#9ca3af'] }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } } }
+        });
+      }
+    },
+
+    openDetail(conv) { this.selectedConv = conv; this.currentPage = 'detail'; },
+    openLabel(conv) { this.openDetail(conv); },
+    viewAlert(alert) { 
+      if (alert.id <= 2) this.openDetail(this.conversations[4]);
+      else this.openDetail(this.conversations[0]);
+    },
+
+    intentLabel(intent) {
+      const m = { query_game_time:'查询时长', set_game_limit:'设置时长', set_charge_limit:'设置充值', query_bindinfo:'查绑定', one_click_ban:'一键禁玩', policy_consult:'政策咨询' };
+      return m[intent] || intent || '';
+    },
+    intentTagClass(intent) {
+      const m = { query_game_time:'bg-blue-100 text-blue-700', set_game_limit:'bg-green-100 text-green-700', set_charge_limit:'bg-yellow-100 text-yellow-700', query_bindinfo:'bg-purple-100 text-purple-700', one_click_ban:'bg-red-100 text-red-700', policy_consult:'bg-indigo-100 text-indigo-700' };
+      return m[intent] || 'bg-gray-100 text-gray-700';
+    },
+    statusLabel(s) { return { completed:'✅ 完成', failed:'❌ 未完成', error:'⚠️ 严重错误' }[s] || ''; },
+    statusBadgeClass(s) { return { completed:'badge-success', failed:'badge-warning', error:'badge-error' }[s] || ''; },
+    feedbackIcon(f) { return { thumbs_up:'👍', thumbs_down:'👎', regenerate:'🔄', none:'—' }[f] || '—'; },
+    feedbackLabel(f) { return { thumbs_up:'点赞', thumbs_down:'点踩', regenerate:'重新生成', none:'无反馈' }[f] || '无反馈'; },
+  };
+}
+</script>
+</body>
+</html>
