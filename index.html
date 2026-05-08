@@ -562,6 +562,238 @@
         </div>
       </template>
 
+      <!-- ========== Bad Case管理 ========== -->
+      <template x-if="currentPage === 'badcase'">
+        <div>
+          <!-- Stats Cards -->
+          <div class="grid grid-cols-4 gap-4 mb-4">
+            <div class="card p-4 border-l-4 border-red-500">
+              <div class="text-xs text-gray-400">待处理</div>
+              <div class="text-2xl font-bold text-red-600">5</div>
+            </div>
+            <div class="card p-4 border-l-4 border-yellow-500">
+              <div class="text-xs text-gray-400">处理中</div>
+              <div class="text-2xl font-bold text-yellow-600">3</div>
+            </div>
+            <div class="card p-4 border-l-4 border-blue-500">
+              <div class="text-xs text-gray-400">待验证</div>
+              <div class="text-2xl font-bold text-blue-600">2</div>
+            </div>
+            <div class="card p-4 border-l-4 border-green-500">
+              <div class="text-xs text-gray-400">已关闭（本周）</div>
+              <div class="text-2xl font-bold text-green-600">8</div>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="card p-4 mb-4 flex items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">状态：</span>
+              <select class="text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+                <option>全部</option>
+                <option selected>待处理</option>
+                <option>处理中</option>
+                <option>待验证</option>
+                <option>已关闭</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">严重程度：</span>
+              <select class="text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+                <option>全部</option>
+                <option>P0 紧急</option>
+                <option>P1 严重</option>
+                <option>P2 一般</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-500">错误类型：</span>
+              <select class="text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+                <option>全部</option>
+                <option>意图识别错误</option>
+                <option>工具调用错误</option>
+                <option>结果处理错误</option>
+                <option>回复质量差</option>
+                <option>合规风险</option>
+              </select>
+            </div>
+            <button class="ml-auto text-sm bg-red-500 text-white px-4 py-1.5 rounded-lg hover:bg-red-600">+ 手动创建</button>
+          </div>
+
+          <!-- Bad Case List -->
+          <div class="card overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 border-b border-gray-200">
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">ID</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">严重程度</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">问题摘要</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">错误类型</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">来源</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">状态</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">处理人</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">创建时间</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="bc in badCases" :key="bc.id">
+                  <tr class="conversation-row border-b border-gray-100" @click="selectedBadCase = bc; currentPage = 'badcase-detail'">
+                    <td class="px-4 py-3 font-mono text-xs text-blue-600" x-text="bc.id"></td>
+                    <td class="px-4 py-3">
+                      <span class="badge" :class="bc.level === 'P0' ? 'badge-error' : bc.level === 'P1' ? 'badge-warning' : 'badge-info'" x-text="bc.level"></span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-700 max-w-xs truncate" x-text="bc.summary"></td>
+                    <td class="px-4 py-3">
+                      <span class="tag" :class="bc.errorType === '工具调用错误' ? 'bg-purple-100 text-purple-700' : bc.errorType === '意图识别错误' ? 'bg-blue-100 text-blue-700' : bc.errorType === '回复质量差' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'" x-text="bc.errorType"></span>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-500" x-text="bc.source"></td>
+                    <td class="px-4 py-3">
+                      <span class="badge" :class="bc.status === '待处理' ? 'badge-error' : bc.status === '处理中' ? 'badge-warning' : bc.status === '待验证' ? 'badge-info' : 'badge-success'" x-text="bc.status"></span>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-600" x-text="bc.assignee || '未分配'"></td>
+                    <td class="px-4 py-3 text-xs text-gray-400" x-text="bc.createdAt"></td>
+                    <td class="px-4 py-3">
+                      <button @click.stop="selectedBadCase = bc; currentPage = 'badcase-detail'" class="text-blue-500 hover:underline text-xs">处理</button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+
+      <!-- ========== Bad Case详情 ========== -->
+      <template x-if="currentPage === 'badcase-detail'">
+        <div>
+          <button @click="currentPage = 'badcase'" class="text-sm text-blue-500 hover:underline mb-4 inline-flex items-center gap-1">← 返回Bad Case列表</button>
+
+          <div class="grid grid-cols-3 gap-4">
+            <!-- Left: Detail -->
+            <div class="col-span-2 space-y-4">
+              <!-- Header -->
+              <div class="card p-5">
+                <div class="flex items-center gap-3 mb-3">
+                  <span class="font-mono text-blue-600 font-bold" x-text="selectedBadCase?.id"></span>
+                  <span class="badge" :class="selectedBadCase?.level === 'P0' ? 'badge-error' : selectedBadCase?.level === 'P1' ? 'badge-warning' : 'badge-info'" x-text="selectedBadCase?.level"></span>
+                  <span class="badge" :class="selectedBadCase?.status === '待处理' ? 'badge-error' : selectedBadCase?.status === '处理中' ? 'badge-warning' : selectedBadCase?.status === '待验证' ? 'badge-info' : 'badge-success'" x-text="selectedBadCase?.status"></span>
+                </div>
+                <h2 class="text-lg font-bold text-gray-800 mb-2" x-text="selectedBadCase?.summary"></h2>
+                <div class="flex gap-4 text-xs text-gray-500">
+                  <span>错误类型：<b class="text-gray-700" x-text="selectedBadCase?.errorType"></b></span>
+                  <span>来源：<b class="text-gray-700" x-text="selectedBadCase?.source"></b></span>
+                  <span>关联对话：<a href="#" class="text-blue-500" x-text="selectedBadCase?.sessionId">S-2835</a></span>
+                </div>
+              </div>
+
+              <!-- Problem Detail -->
+              <div class="card p-5">
+                <div class="font-semibold text-sm text-gray-700 mb-3">问题详情</div>
+                <div class="bg-red-50 rounded-lg p-4 text-sm text-gray-700 space-y-2">
+                  <div><b>用户输入：</b><span x-text="selectedBadCase?.userInput"></span></div>
+                  <div><b>AI行为：</b><span x-text="selectedBadCase?.aiAction"></span></div>
+                  <div><b>期望行为：</b><span x-text="selectedBadCase?.expected"></span></div>
+                  <div><b>实际影响：</b><span x-text="selectedBadCase?.impact"></span></div>
+                </div>
+              </div>
+
+              <!-- Timeline -->
+              <div class="card p-5">
+                <div class="font-semibold text-sm text-gray-700 mb-3">处理记录</div>
+                <div class="space-y-3">
+                  <template x-for="(log, li) in selectedBadCase?.logs || []" :key="li">
+                    <div class="flex gap-3">
+                      <div class="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" :class="log.type === 'create' ? 'bg-red-400' : log.type === 'assign' ? 'bg-yellow-400' : log.type === 'fix' ? 'bg-blue-400' : 'bg-green-400'"></div>
+                      <div>
+                        <div class="text-xs text-gray-400" x-text="log.time"></div>
+                        <div class="text-sm text-gray-700" x-text="log.content"></div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Regression Test -->
+              <div class="card p-5">
+                <div class="font-semibold text-sm text-gray-700 mb-3">回归验证</div>
+                <div class="bg-gray-50 rounded-lg p-4 text-sm">
+                  <div class="grid grid-cols-3 gap-4 mb-3">
+                    <div><span class="text-xs text-gray-400">输入</span><div class="font-medium text-gray-700 mt-1" x-text="selectedBadCase?.regression?.input || '待验证'"></div></div>
+                    <div><span class="text-xs text-gray-400">期望结果</span><div class="font-medium text-gray-700 mt-1" x-text="selectedBadCase?.regression?.expected || '—'"></div></div>
+                    <div><span class="text-xs text-gray-400">实际结果</span><div class="font-medium mt-1" :class="selectedBadCase?.regression?.pass ? 'text-green-600' : 'text-gray-400'" x-text="selectedBadCase?.regression?.actual || '未执行'"></div></div>
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg">▶ 执行回归测试</button>
+                    <button class="text-xs bg-green-500 text-white px-3 py-1.5 rounded-lg">✅ 加入永久测试集</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Actions -->
+            <div class="space-y-4">
+              <div class="card p-4">
+                <div class="font-semibold text-sm text-gray-700 mb-3">状态流转</div>
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2 text-xs">
+                    <div class="w-3 h-3 rounded-full bg-red-400"></div><span>待处理</span>
+                    <span class="text-gray-300">→</span>
+                    <div class="w-3 h-3 rounded-full bg-yellow-400"></div><span>处理中</span>
+                    <span class="text-gray-300">→</span>
+                    <div class="w-3 h-3 rounded-full bg-blue-400"></div><span>待验证</span>
+                    <span class="text-gray-300">→</span>
+                    <div class="w-3 h-3 rounded-full bg-green-400"></div><span>已关闭</span>
+                  </div>
+                </div>
+                <div class="mt-4 space-y-2">
+                  <button class="w-full text-sm bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600">开始处理</button>
+                  <button class="w-full text-sm bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600">标记已修复→待验证</button>
+                  <button class="w-full text-sm bg-green-500 text-white py-2 rounded-lg hover:bg-green-600">验证通过→关闭</button>
+                </div>
+              </div>
+
+              <div class="card p-4">
+                <div class="font-semibold text-sm text-gray-700 mb-3">分配处理人</div>
+                <select class="w-full text-sm border rounded-lg px-3 py-1.5 mb-2">
+                  <option>未分配</option>
+                  <option selected>开发A - 后端</option>
+                  <option>开发B - 算法</option>
+                  <option>开发C - 前端</option>
+                </select>
+                <button class="w-full text-sm border border-blue-500 text-blue-500 py-1.5 rounded-lg hover:bg-blue-50">确认分配</button>
+              </div>
+
+              <div class="card p-4">
+                <div class="font-semibold text-sm text-gray-700 mb-3">修复方案</div>
+                <div class="space-y-2">
+                  <label class="text-xs text-gray-500">修复类型</label>
+                  <select class="w-full text-sm border rounded-lg px-3 py-1.5">
+                    <option>调整Prompt</option>
+                    <option>修改工具描述</option>
+                    <option selected>修复代码Bug</option>
+                    <option>添加规则拦截</option>
+                    <option>扩充知识库</option>
+                  </select>
+                  <label class="text-xs text-gray-500">修复说明</label>
+                  <textarea class="w-full text-sm border rounded-lg px-3 py-1.5 h-20 resize-none" placeholder="描述修复内容...">数字解析逻辑bug：用户说"1小时"时，正则取到了"1"但单位判断错误，将"小时"误判为"分钟"导致传参1而非60。已修正单位映射逻辑。</textarea>
+                </div>
+              </div>
+
+              <div class="card p-4">
+                <div class="font-semibold text-sm text-gray-700 mb-3">关联信息</div>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between"><span class="text-gray-400">关联对话</span><a href="#" class="text-blue-500" x-text="selectedBadCase?.sessionId"></a></div>
+                  <div class="flex justify-between"><span class="text-gray-400">创建时间</span><span class="text-gray-600" x-text="selectedBadCase?.createdAt"></span></div>
+                  <div class="flex justify-between"><span class="text-gray-400">影响用户数</span><span class="text-gray-600">1人（已回滚）</span></div>
+                  <div class="flex justify-between"><span class="text-gray-400">是否已加入测试集</span><span class="text-green-600 font-medium">是 (TC-071)</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
     </main>
   </div>
 </div>
@@ -576,6 +808,7 @@ function adminApp() {
     menuItems: [
       { id: 'dashboard', icon: '📊', label: '数据看板', desc: 'AI助手核心指标总览' },
       { id: 'conversations', icon: '💬', label: '对话列表', desc: '查看所有用户对话记录（脱敏）' },
+      { id: 'badcase', icon: '🐛', label: 'Bad Case管理', desc: '问题归档、分配、修复、验证闭环', badge: '5' },
       { id: 'quality', icon: '✅', label: '质量抽检', desc: '每日抽检标注任务', badge: '12' },
       { id: 'alerts', icon: '🚨', label: '告警中心', desc: '严重错误和异常告警', badge: '3' },
     ],
@@ -621,6 +854,59 @@ function adminApp() {
       { id: 4, level: 'warning', title: '查询充值限额的完成率低于阈值', desc: '近1小时该意图完成率降至68%（阈值75%），疑似API异常。', time: '今日 08:30', handled: true },
       { id: 5, level: 'critical', title: 'API网关超时导致批量调用失败', desc: '10:15-10:22期间，set_game_limit接口超时率达40%，影响约30条对话。', time: '昨日 10:15', handled: true },
     ],
+
+    badCases: [
+      { id: 'BC-005', level: 'P0', summary: '用户说"设1小时"，AI传参daily_limit=0导致完全禁玩', errorType: '工具调用错误', source: '系统自动检测', status: '待处理', assignee: '', createdAt: '5/7 14:23', sessionId: 'S-2835',
+        userInput: '帮我设时长1小时', aiAction: '调用set_game_limit传参daily_limit=0，导致孩子完全无法玩游戏', expected: '应传参daily_limit=60', impact: '孩子完全无法登录游戏，家长投诉后手动回滚',
+        logs: [
+          { type: 'create', time: '5/7 14:23', content: '系统自动检测到参数异常（daily_limit=0），自动创建Bad Case' },
+          { type: 'create', time: '5/7 14:25', content: '已自动回滚用户管控设置至原始值' },
+        ],
+        regression: { input: '帮我设时长1小时', expected: 'daily_limit=60', actual: '', pass: false }
+      },
+      { id: 'BC-004', level: 'P0', summary: 'AI幻觉：告诉用户存在"家长免密码解锁"功能', errorType: '回复质量差', source: '系统自动检测', status: '处理中', assignee: '开发B-算法', createdAt: '5/7 11:45', sessionId: 'S-2840',
+        userInput: '孩子手机被锁了怎么办', aiAction: 'AI回复"您可以使用家长免密码解锁功能，在管控设置页面找到"', expected: '应回复"请联系客服协助"或引导走正规解锁流程', impact: '用户找不到该功能，造成困惑和不信任',
+        logs: [
+          { type: 'create', time: '5/7 11:45', content: '系统检测到AI回复中包含不存在的功能名称' },
+          { type: 'assign', time: '5/7 12:00', content: 'PM分配给开发B-算法处理' },
+          { type: 'fix', time: '5/7 16:30', content: '开发B：在System Prompt中增加禁止规则"不可编造不存在的功能"，增加功能名称白名单校验' },
+        ],
+        regression: { input: '孩子手机被锁了怎么办', expected: '引导联系客服或正规流程', actual: '', pass: false }
+      },
+      { id: 'BC-003', level: 'P1', summary: '多轮对话第5轮起AI忘记了前面设置的对象，给错误孩子设了时长', errorType: '工具调用错误', source: '人工抽检', status: '待验证', assignee: '开发A-后端', createdAt: '5/6 09:12', sessionId: 'S-2820',
+        userInput: '帮老二也设一下（前面已为老大设置）', aiAction: '调用set_game_limit时child参数仍为[孩子A]（老大），应为[孩子B]（老二）', expected: '应识别"老二"=孩子B，为孩子B设置', impact: '老大的设置被重复覆盖，老二没有被设置',
+        logs: [
+          { type: 'create', time: '5/6 09:12', content: 'PM每日抽检发现：多轮对话上下文保持失败' },
+          { type: 'assign', time: '5/6 10:00', content: 'PM分配给开发A-后端' },
+          { type: 'fix', time: '5/7 11:00', content: '开发A：在System Prompt中增加显式状态追踪规则，每轮结束记录当前操作对象' },
+          { type: 'fix', time: '5/8 09:00', content: '开发A：已部署修复版本，等待PM验证' },
+        ],
+        regression: { input: '（多轮）先为老大设1小时→再说"帮老二也设一下"', expected: 'child=[孩子B], daily_limit=60', actual: 'child=[孩子B], daily_limit=60 ✅', pass: true }
+      },
+      { id: 'BC-002', level: 'P1', summary: 'AI未做二次确认直接执行了一键禁玩', errorType: '工具调用错误', source: '用户点踩', status: '已关闭', assignee: '开发A-后端', createdAt: '5/5 16:40', sessionId: 'S-2798',
+        userInput: '把游戏都关了吧', aiAction: '直接调用set_one_click_ban(ban=true)并执行，没有弹出二次确认', expected: '高危操作必须先展示确认弹窗，用户明确确认后才执行', impact: '用户可能是随口说说，AI直接执行导致孩子立刻无法玩游戏',
+        logs: [
+          { type: 'create', time: '5/5 16:40', content: '用户点踩后系统自动创建' },
+          { type: 'assign', time: '5/5 17:00', content: 'PM分配给开发A' },
+          { type: 'fix', time: '5/6 10:00', content: '开发A：在一键禁玩工具描述中增加"执行前必须展示确认卡片"的强制规则' },
+          { type: 'fix', time: '5/6 14:00', content: 'PM验证：重跑该case，AI现在会先展示确认弹窗' },
+          { type: 'fix', time: '5/6 14:00', content: '已加入永久测试集(TC-072)，关闭' },
+        ],
+        regression: { input: '把游戏都关了吧', expected: '先展示确认弹窗，用户确认后才执行', actual: '展示了确认弹窗 ✅', pass: true }
+      },
+      { id: 'BC-001', level: 'P2', summary: 'AI回复"已帮您设置"但语气太冷冰冰，缺少人情味', errorType: '回复质量差', source: '人工抽检', status: '已关闭', assignee: '开发B-算法', createdAt: '5/4 11:00', sessionId: 'S-2780',
+        userInput: '帮我限制孩子每天玩30分钟', aiAction: 'AI回复"设置完成。游戏时长限制为30分钟。"', expected: '回复应更温暖，如"设置好了！孩子每天最多玩30分钟，到时间会自动停。有需要随时找我~"', impact: '无功能问题，但用户体验偏冷',
+        logs: [
+          { type: 'create', time: '5/4 11:00', content: 'PM抽检发现回复风格问题' },
+          { type: 'assign', time: '5/4 14:00', content: 'PM分配给开发B-算法' },
+          { type: 'fix', time: '5/5 10:00', content: '开发B：在Prompt中增加回复风格要求"温暖亲切、给予肯定、提供后续建议"' },
+          { type: 'fix', time: '5/5 11:00', content: 'PM验证通过，关闭' },
+        ],
+        regression: { input: '帮我限制孩子每天玩30分钟', expected: '温暖语气+确认结果+后续建议', actual: '"设置好了！...有需要随时找我💪" ✅', pass: true }
+      },
+    ],
+
+    selectedBadCase: null,
 
     conversations: [
       { id: 'S-2847', userId: 'hash_7f3a', firstMsg: '帮我看看[孩子A]今天玩了多久', intent: 'query_game_time', turns: 3, status: 'completed', feedback: 'thumbs_up', time: '14:32',
